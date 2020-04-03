@@ -22,9 +22,28 @@ RCT_EXPORT_METHOD(initialize
                   :(nonnull NSString *)appId
                   :(NSDictionary *)options
                   //:(BOOL *)autoScreenView
+                  //:(BOOL *)setPlatformContext
+                  //:(BOOL *)setGeoLocationContext
+                  //:(BOOL *)setBase64Encoded
+                  //:(BOOL *)setApplicationContext
+                  //:(BOOL *)setLifecycleEvents
+                  //:(BOOL *)setScreenContext
+                  //:(BOOL *)setInstallEvent
+                  //:(BOOL *)setExceptionEvents
+                  //:(BOOL *)setSessionContext
+                  //:(INT *)setForegroundTimeout
+                  //:(INT *)setBackgroundTimeout
+                  //:(STRING *)userId
                 ) {
-    SPSubject *subject = [[SPSubject alloc] initWithPlatformContext:YES andGeoContext:NO];
-
+    BOOL setPlatformContext = NO;
+    BOOL setGeoLocationContext = NO;
+    if (options[@"setPlatformContext"] == @YES ) setPlatformContext = YES;
+    if (options[@"setGeoLocationContext"] == @YES ) setGeoLocationContext = YES;
+    SPSubject *subject = [[SPSubject alloc] initWithPlatformContext:setPlatformContext andGeoContext:setGeoLocationContext];
+    if (options[@"userId"] != nil) {
+            [subject setUserId:options[@"userId"]];
+    }
+    
     SPEmitter *emitter = [SPEmitter build:^(id<SPEmitterBuilder> builder) {
         [builder setUrlEndpoint:endpoint];
         [builder setHttpMethod:([@"post" caseInsensitiveCompare:method] == NSOrderedSame) ? SPRequestPost : SPRequestGet];
@@ -33,8 +52,45 @@ RCT_EXPORT_METHOD(initialize
     self.tracker = [SPTracker build:^(id<SPTrackerBuilder> builder) {
         [builder setEmitter:emitter];
         [builder setAppId:appId];
+        // setBase64Encoded
+        if (options[@"setBase64Encoded"] == @YES ) {
+            [builder setBase64Encoded:YES];
+        }else [builder setBase64Encoded:NO];
         [builder setTrackerNamespace:namespace];
         [builder setAutotrackScreenViews:options[@"autoScreenView"]];
+        // setApplicationContext
+        if (options[@"setApplicationContext"] == @YES ) {
+            [builder setApplicationContext:YES];
+        }else [builder setApplicationContext:NO];
+        // setSessionContextui
+        if (options[@"setSessionContext"] == @YES ) {
+            [builder setSessionContext:YES];
+            if (options[@"checkInterval"] != nil) {
+                [builder setCheckInterval:options[@"checkInterval"]];
+            }else [builder setCheckInterval:15];
+            if (options[@"foregroundTimeout"] != nil) {
+                 [builder setSessionContext:options[@"foregroundTimeout"]];
+            }else [builder setForegroundTimeout:600];
+            if (options[@"backgroundTimeout"] != nil) {
+                 [builder setSessionContext:options[@"backgroundTimeout"]];
+            }else [builder setBackgroundTimeout:300];
+        }else [builder setSessionContext:NO];
+        // setLifecycleEvents
+        if (options[@"setLifecycleEvents"] == @YES ) {
+            [builder setLifecycleEvents:YES];
+        }else [builder setLifecycleEvents:NO];
+        // setScreenContext
+        if (options[@"setScreenContext"] == @YES ) {
+            [builder setScreenContext:YES];
+        }else [builder setScreenContext:NO];
+        //setInstallEvent
+        if (options[@"setInstallEvent"] == @YES ) {
+            [builder setInstallEvent:YES];
+        }else [builder setInstallEvent:NO];
+        //setExceptionEvents
+        if (options[@"setExceptionEvents"] == @YES ) {
+            [builder setExceptionEvents:YES];
+        }else [builder setExceptionEvents:NO];
         [builder setSubject:subject];
     }];
 }
@@ -93,6 +149,37 @@ RCT_EXPORT_METHOD(trackScreenViewEvent
         }
       }];
       [self.tracker trackScreenViewEvent:SVevent];
+}
+
+RCT_EXPORT_METHOD(trackPageView
+                  :(nonnull NSString *)pageUrl // required (non-empty string)
+                  :(NSString *)pageTitle
+                  :(NSString *)pageReferrer
+                  :(NSArray<SPSelfDescribingJson *> *)contexts) {
+    SPPageView * trackerEvent = [SPPageView build:^(id<SPPageViewBuilder> builder) {
+        [builder setPageUrl:pageUrl];
+        if (pageTitle != nil) [builder setPageTitle:pageTitle];
+        if (pageReferrer != nil) [builder setReferrer:pageReferrer];
+        if (contexts) {
+            [builder setContexts:[[NSMutableArray alloc] initWithArray:contexts]];
+        }
+    }];
+    [self.tracker trackPageViewEvent:trackerEvent];
+}
+
+RCT_EXPORT_METHOD(setUserId
+                  :(nonnull NSString *)userId // required (non-empty string),
+                  :(NSDictionary *)options
+                ) {
+    BOOL setPlatformContext = NO;
+    BOOL setGeoLocationContext = NO;
+    if (options[@"setPlatformContext"] == @YES ) setPlatformContext = YES;
+    if (options[@"setGeoLocationContext"] == @YES ) setGeoLocationContext = YES;
+    SPSubject * subject = [[SPSubject alloc] initWithPlatformContext:setPlatformContext andGeoContext:setGeoLocationContext];
+    if (userId != nil) {
+        [subject setUserId:userId];
+        [self.tracker setSubject:subject];
+    }
 }
 
 @end
